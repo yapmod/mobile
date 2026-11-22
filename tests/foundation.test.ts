@@ -5,6 +5,7 @@ import test from 'node:test';
 import { JSDOM } from 'jsdom';
 import { isInternal, webAddress } from '../src/config/address';
 import { readMessage } from '../src/bridge/messages';
+import { readNotice, type NoticeRequest } from '../src/bridge/notifications';
 import { allowChildFrame } from '../src/webview/frameNavigation';
 import { bootstrapScript } from '../src/injection/bootstrap';
 
@@ -42,17 +43,20 @@ function page(url = origin) {
     media, matches: false, onchange: null, addListener() {}, removeListener() {},
   });
   const messages: string[] = [];
+  const requests: NoticeRequest[] = [];
   dom.window.ReactNativeWebView = { postMessage(raw: string) {
     const message = readMessage(url, raw, origin, channel);
     if (message) messages.push(message.type);
+    const request = readNotice(url, raw, origin, channel);
+    if (request) requests.push(request);
   } };
-  return { dom, messages, inject(enabled: boolean) {
+  return { dom, messages, requests, inject(enabled: boolean) {
     dom.window.eval(bootstrapScript(origin, enabled, channel));
   } };
 }
 
 test('le plugin local monte une section, ouvre les paramètres et nettoie son intégration', async () => {
-  const { dom, messages, inject } = page();
+  const { dom, messages, requests, inject } = page();
   try {
     inject(true);
     inject(true);
@@ -71,7 +75,21 @@ test('le plugin local monte une section, ouvre les paramètres et nettoie son in
     nav[0]!.click();
     const panel = host.querySelector<HTMLElement>('.yp-panel[data-yp-current]')!;
     assert.ok(panel.textContent.includes(dom.window.YapmodClient.version));
-    panel.querySelector('button')!.click();
+    assert.deepEqual(requests.map(request => request.op), ['status']);
+    const reply = async (enabled: boolean, permission: NotificationPermission) => {
+      dom.window.dispatchEvent(new dom.window.CustomEvent('yapmod:mobile-notice', {
+        detail: { id: requests.at(-1)!.id, ok: true, value: { enabled, permission } },
+      }));
+      await new Promise(resolve => setTimeout(resolve, 0));
+    };
+    await reply(true, 'default');
+    const button = (label: string) => Array.from(panel.querySelectorAll('button')).find(item => item.textContent === label);
+    assert.equal(button('Send test notification'), undefined);
+    button('Allow notifications')!.click();
+    assert.equal(requests.at(-1)?.op, 'enable');
+    await reply(true, 'denied');
+    assert.ok(button('Open system settings'));
+    Array.from(panel.querySelectorAll('button')).find(button => button.textContent === 'Open settings')!.click();
     assert.equal(messages.at(-1), 'settings');
     dom.window.history.pushState({}, '', '/some-route');
     inject(true);
@@ -113,4 +131,43 @@ test('les cadres de connexion peuvent créer des documents inline sans accès au
 
 test('the bundled client matches the release digest', () => {
   assert.equal('sha256:' + createHash('sha256').update(release.source).digest('hex'), release.digest);
+});
+
+test('notification commands require origin, channel, bounded content and exact fields', () => {
+  const request = { id: channel, op: 'show', title: 'Yapin', body: 'Hello' };
+  const pack = (value: object) => JSON.stringify({ type: 'notice', v: 2, channel, request: value });
+  assert.deepEqual(readNotice(origin, pack(request), origin, channel), request);
+  assert.equal(readNotice('https://elsewhere.test', pack(request), origin, channel), null);
+  assert.equal(readNotice(origin, pack(request), origin, 'wrong'), null);
+  for (const invalid of [{ ...request, body: 'x'.repeat(1025) }, { ...request, url: origin },
+    { ...request, op: 'eval' }, { ...request, id: '' }, { id: channel, op: 'close', notice: 2 }])
+    assert.equal(readNotice(origin, pack(invalid), origin, channel), null);
+});
+
+test('live notification forwards show, tap and close once and restores the previous API', async () => {
+  const { dom, requests, inject } = page();
+  const original = dom.window.Notification;
+  const emit = (detail: object) => dom.window.dispatchEvent(new dom.window.CustomEvent('yapmod:mobile-notice', { detail }));
+  const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+  try {
+    inject(true);
+    assert.equal(requests[0]?.op, 'status');
+    new dom.window.Notification('Before opt-in');
+    assert.equal(requests.length, 1);
+    emit({ id: requests[0]!.id, ok: true, value: { enabled: true, permission: 'granted' } });
+    await tick();
+    const notice = new dom.window.Notification('Message', { body: 'Hello' });
+    const events: string[] = [];
+    for (const type of ['show', 'click', 'close']) notice.addEventListener(type, () => events.push(type));
+    const show = requests.at(-1)!;
+    assert.deepEqual(show, { id: show.id, op: 'show', title: 'Message', body: 'Hello' });
+    emit({ id: show.id, ok: true });
+    await tick();
+    emit({ clicked: show.id });
+    emit({ clicked: show.id });
+    assert.deepEqual(events, ['show', 'click', 'close']);
+    assert.equal(requests.at(-1)?.op, 'close');
+    inject(false);
+    assert.equal(dom.window.Notification, original);
+  } finally { dom.window.close(); }
 });

@@ -21,6 +21,12 @@ Open **Settings → Yapmod → Mobile** in Yapin to see the app version and open
 
 If you need to reach the settings before signing in or while the plugin is disabled, touch the view with three fingers. The main screen leaves the available space to Yapin.
 
+### Live notifications
+
+While the Yapin page is running, the Mobile plugin forwards alerts created with the browser Notification API to your phone’s notification center. **This release does not support background push:** new messages won’t generate alerts while the app is suspended or closed. Tapping an existing alert opens the app; Yapin can handle the tap if the original page is still running.
+
+Choose which alerts you want in Yapin. **Settings → Yapmod → Mobile → Mobile notifications** controls delivery on this phone. It’s on by default and stays off if you turn it off. If the phone hasn’t granted permission, tap **Allow notifications** in the Mobile tab. If permission was blocked, tap **Open system settings** instead.
+
 ## Microphone and camera permissions
 
 In Expo Go on iOS, the app declines web microphone and camera requests. On Android, Expo Go controls device permissions. Use a dedicated development build to test the project’s native capture prompts and origin checks. Voice and video calls, background audio, lock-screen behavior, and audio device switching still need testing on both platforms.

@@ -45,6 +45,9 @@ export function bootstrapScript(origin: string, enabled: boolean, channel: strin
             appVersion: ${JSON.stringify(version)},
             clientVersion: client.version,
             openSettings: () => send('settings'),
+            notice: request => window.ReactNativeWebView?.postMessage(JSON.stringify({
+              v: 2, type: 'notice', channel: ${JSON.stringify(channel)}, request
+            })),
             setActive(value) {
               active = value;
               send(value ? 'active' : 'inactive');

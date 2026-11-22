@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { isRunningInExpoGo } from 'expo';
 import { randomUUID } from 'expo-crypto';
-import { ActivityIndicator, Alert, BackHandler, Linking, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, BackHandler, Linking, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { tag as clientTag } from '../../vendor/yapmod/client.json';
 import { readMessage } from '../bridge/messages';
+import { readNotice } from '../bridge/notifications';
+import { listenForTap, notificationSession } from '../notifications/native';
 import { Action, colors, styles } from '../components/controls';
 import { isInternal, webAddress } from '../config/address';
 import { allowChildFrame } from './frameNavigation';
@@ -26,6 +28,22 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
   const confirmed = useRef(false);
   const [channel] = useState(randomUUID);
   const source = useMemo(() => ({ uri: address.href }), [address.href]);
+  const notices = useRef<ReturnType<typeof notificationSession> | null>(null);
+  function resetNotices() {
+    notices.current?.dispose();
+    notices.current = null;
+  }
+  const emit = useMemo(() => (detail: object) => {
+    if (notices.current) ref.current?.injectJavaScript(
+      `if (location.origin === ${JSON.stringify(address.origin)}) window.dispatchEvent(new CustomEvent('yapmod:mobile-notice', {detail:${JSON.stringify(detail)}})); true;`,
+    );
+  }, [address.origin]);
+  useEffect(() => {
+    if (!enabled) return;
+    const taps = listenForTap(id => emit({ clicked: id }));
+    const focus = AppState.addEventListener('change', state => { if (state === 'active') emit({ refresh: true }); });
+    return () => { resetNotices(); taps.remove(); focus.remove(); };
+  }, [enabled, emit]);
   const script = useMemo(() => bootstrapScript(address.origin, enabled, channel), [address.origin, enabled, channel]);
 
   useEffect(() => {
@@ -57,6 +75,7 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
     ]);
   }
   function failed() {
+    resetNotices();
     setError(true);
     setLoading(false);
     onStatus('Page indisponible');
@@ -87,6 +106,7 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
       }}
       onNavigationStateChange={state => { back.current = state.canGoBack; }}
       onLoadStart={() => {
+        resetNotices();
         confirmed.current = false;
         setLoading(true);
         onStatus(enabled ? 'En attente du bootstrap' : states.inactive);
@@ -99,7 +119,16 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
       injectedJavaScript={enabled ? script : undefined}
       onMessage={enabled ? ({ nativeEvent }) => {
         const message = readMessage(nativeEvent.url, nativeEvent.data, address.origin, channel);
-        if (!message) return;
+        if (!message) {
+          const session = notices.current;
+          const request = session && readNotice(nativeEvent.url, nativeEvent.data, address.origin, channel);
+          if (request) void session.run(request).then(value => {
+            if (session === notices.current) emit({ id: request.id, ok: true, value });
+          }, () => { if (session === notices.current) emit({ id: request.id, ok: false }); });
+          return;
+        }
+        if (message.type === 'active') notices.current ??= notificationSession();
+        if (['inactive', 'error', 'ready'].includes(message.type)) resetNotices();
         if (message.type === 'settings') { onSettings(); return; }
         confirmed.current = message.type !== 'ready';
         onStatus(states[message.type]);
