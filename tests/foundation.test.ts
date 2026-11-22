@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import release from '../vendor/yapmod/client.json';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
@@ -36,6 +38,9 @@ test('la passerelle valide la provenance native, le canal et la forme exacte', (
 
 function page(url = origin) {
   const dom = new JSDOM('<body></body>', { url, runScripts: 'outside-only' });
+  dom.window.matchMedia = (media: string) => Object.assign(new dom.window.EventTarget(), {
+    media, matches: false, onchange: null, addListener() {}, removeListener() {},
+  });
   const messages: string[] = [];
   dom.window.ReactNativeWebView = { postMessage(raw: string) {
     const message = readMessage(url, raw, origin, channel);
@@ -58,20 +63,26 @@ test('le plugin local monte une section, ouvre les paramètres et nettoie son in
     host.innerHTML = '<nav class="settings-nav"></nav><main class="settings-main"></main>';
     doc.body.append(host);
     await new Promise(resolve => setTimeout(resolve, 0));
-    const nav = host.querySelectorAll<HTMLButtonElement>('.settings-nav button');
+    const mobileNav = '.settings-nav [data-yp-section="plugin:client:yapmod-mobile:mobile"]';
+    const nav = host.querySelectorAll<HTMLButtonElement>(mobileNav);
     assert.equal(nav.length, 1);
+    assert.ok(host.querySelector('.settings-nav [data-yp-section="plugins"]'));
+    assert.equal('v' + dom.window.YapmodClient.version, release.tag);
     nav[0]!.click();
-    host.querySelector<HTMLButtonElement>('.yp-panel button')!.click();
+    const panel = host.querySelector<HTMLElement>('.yp-panel[data-yp-current]')!;
+    assert.ok(panel.textContent.includes(dom.window.YapmodClient.version));
+    panel.querySelector('button')!.click();
     assert.equal(messages.at(-1), 'settings');
     dom.window.history.pushState({}, '', '/some-route');
     inject(true);
-    assert.equal(host.querySelectorAll('.yp-panel').length, 1);
+    assert.equal(host.querySelectorAll(mobileNav).length, 1);
     inject(false);
+    assert.equal(dom.window.YapmodClient, undefined);
     assert.equal(host.querySelector('.yp-panel'), null);
     assert.equal(host.querySelector('.settings-nav button'), null);
     assert.equal(messages.at(-1), 'inactive');
     inject(true);
-    assert.equal(host.querySelectorAll('.yp-panel').length, 1);
+    assert.equal(host.querySelectorAll(mobileNav).length, 1);
   } finally { dom.window.close(); }
 });
 
@@ -97,4 +108,9 @@ test('les cadres de connexion peuvent créer des documents inline sans accès au
   for (const url of ['about:config', 'about:blank.example', 'file:///example', 'javascript:void(0)', 'http://example.org']) {
     assert.equal(allowChildFrame(url), false);
   }
+});
+
+
+test('the bundled client matches the release digest', () => {
+  assert.equal('sha256:' + createHash('sha256').update(release.source).digest('hex'), release.digest);
 });

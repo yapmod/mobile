@@ -1,7 +1,7 @@
 <div align="center">
   <img src="docs/images/banner.svg" width="870" alt="Yapmod" />
   <h1>Yapmod Mobile</h1>
-  <p>Open Yapin on iOS and Android with a bundled Yapmod plugin and settings built into the web client.</p>
+  <p>Open Yapin on iOS and Android with the Yapmod client and a mobile settings plugin.</p>
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL%20v3-blue" alt="GNU GPL v3 license" /></a>
     <img src="https://img.shields.io/badge/Expo-SDK%2058-000020" alt="Expo SDK 58" />
@@ -41,6 +41,8 @@ Scan the QR code printed by Metro to open the project on your phone. The default
 | Command | Result |
 | --- | --- |
 | `npm run ios` / `npm run android` | Starts Metro in Expo Go mode and opens the selected local platform. |
+| `npm run sync:client` | Refreshes the bundled client from the latest stable GitHub release and verifies its SHA-256 digest. |
+| `npm run build:plugin` | Compiles the mobile plugin with `@yapmod/builder`. |
 | `npm run check` | Runs strict TypeScript checks, the tests, Expo dependency validation, and Expo Doctor. |
 | `npx expo export --platform all` | Produces JavaScript bundles for iOS and Android. |
 | `npx expo run:ios --device` / `npx expo run:android` | Compiles and installs a dedicated development build using the platform’s native toolchain. |
@@ -49,14 +51,18 @@ The dedicated build uses the versioned WebView patch in `patches/`. Expo Go uses
 
 ## Local plugin development
 
-The mobile plugin registers as `client:yapmod-mobile`. Edit `plugin/mobile.js` to add a settings section through `api.settings.registerSection` in its `onLoad` hook. The bootstrap installs the bundled plugin once per top-level Yapin document after loading. The bridge checks the native event URL and a per-WebView channel before accepting a status message or a request to open settings.
+Metro checks the latest stable release of the official Yapmod client when it starts or exports a bundle. It verifies GitHub’s SHA-256 digest for the `yapmod-client.js` asset and keeps a copy in `vendor/yapmod/client.json`. If the release check fails, Metro reports the fallback and uses the previously verified copy. Restart Metro to pick up a new release. An exported app uses the client bundled with that export. [Official client releases](https://github.com/yapmod/client/releases)
 
-The repository includes the compiled plugin in `vendor/yapmod/mobile.json`, so a fresh clone can run immediately after installing dependencies. After changing the plugin, check out the pinned Yapmod client revision, install that checkout’s build dependencies, and run the following commands from the mobile repository. [Pinned Yapmod client source](https://github.com/yapmod/client/tree/43f3a933a675201b914dcbff219524022494e27f)
+On each authorized top-level Yapin document, the bootstrap starts the full client and calls its public `registerClientPlugin` API. The mobile plugin appears under **Settings → Yapmod → Mobile**, alongside the client’s own settings. Its page shows both the mobile app version and the running client version and opens the native modification controls.
+
+Edit `plugin/src/index.tsx` to add a mobile feature. Register settings in `onLoad` with `api.settings.registerSection` and use `@yapmod/ui` components from the shared client runtime. Keep the ID `client:yapmod-mobile` stable so client plugin preferences survive updates. Metro builds the plugin on startup and export. During an existing development session, run the following after editing its source, then reload Yapin to load the updated plugin.
 
 ```sh
-node scripts/bundle-mobile.mjs /path/to/yapmod/client
+npm run build:plugin
 npm run check
 ```
+
+The builder emits the plugin expression bundled in `vendor/yapmod/mobile.json`. Both compiled artifacts ship in the repository so development can start from a fresh clone.
 
 ## License and artwork
 

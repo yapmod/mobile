@@ -3,6 +3,7 @@ import { isRunningInExpoGo } from 'expo';
 import { randomUUID } from 'expo-crypto';
 import { ActivityIndicator, Alert, BackHandler, Linking, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { tag as clientTag } from '../../vendor/yapmod/client.json';
 import { readMessage } from '../bridge/messages';
 import { Action, colors, styles } from '../components/controls';
 import { isInternal, webAddress } from '../config/address';
@@ -13,7 +14,7 @@ type Props = {
   address: URL; enabled: boolean; covered: boolean; onSettings: () => void; onStatus: (text: string) => void;
 };
 const states = {
-  ready: 'Bootstrap v2 démarré', active: 'Plugin Mobile actif',
+  ready: 'Bootstrap v2 démarré', active: `Yapmod client ${clientTag} · Mobile plugin active`,
   inactive: 'Désactivé', error: 'Échec du diagnostic',
 };
 

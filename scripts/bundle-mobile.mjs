@@ -1,32 +1,35 @@
-// Rebuild from the pinned Yapmod client checkout with its build dependencies installed.
 import { execFileSync } from 'node:child_process';
-import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { writeFile } from 'node:fs/promises';
 
-const revision = '43f3a933a675201b914dcbff219524022494e27f';
-if (!process.argv[2]) throw new Error('Pass the path to the Yapmod client checkout.');
-const checkout = resolve(process.argv[2]);
-if (execFileSync('git', ['-C', checkout, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim() !== revision) {
-  throw new Error('Expected Yapmod client revision ' + revision);
+const root = fileURLToPath(new URL('../', import.meta.url));
+
+export function buildMobilePlugin() {
+  const builder = join(root, 'node_modules/@yapmod/builder');
+  const manifest = JSON.parse(readFileSync(join(builder, 'package.json'), 'utf8'));
+  const directory = mkdtempSync(join(tmpdir(), 'yapmod-mobile-plugin-'));
+  const destination = join(root, 'vendor/yapmod/mobile.json');
+  const temporary = destination + '.' + randomUUID() + '.tmp';
+  try {
+    const output = join(directory, 'plugin.js');
+    execFileSync(process.execPath, [
+      join(builder, manifest.bin.yapmod), 'build', '--entry', 'plugin/src/index.tsx', '--outfile', output,
+    ], { cwd: root, stdio: 'inherit' });
+    const contents = JSON.stringify(readFileSync(output, 'utf8')) + '\n';
+    try {
+      if (readFileSync(destination, 'utf8') === contents) return;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    writeFileSync(temporary, contents);
+    renameSync(temporary, destination);
+  } finally {
+    rmSync(temporary, { force: true });
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
-const root = resolve(checkout, 'apps/client');
-const require = createRequire(resolve(root, 'package.json'));
-const { build } = await import(pathToFileURL(require.resolve('vite')).href);
-const { default: solid } = await import(pathToFileURL(require.resolve('vite-plugin-solid')).href);
-const result = await build({
-  root, configFile: false, plugins: [solid()],
-  resolve: { dedupe: ['solid-js'], alias: {
-    'yapmod-source': resolve(root, 'src'),
-    '@yapmod/core': resolve(checkout, 'packages/core/src/index.ts'),
-  } },
-  build: {
-    write: false, sourcemap: false, target: 'es2020',
-    lib: { entry: fileURLToPath(new URL('../plugin/mobile.js', import.meta.url)), name: 'YapmodMobilePlugin', formats: ['iife'] },
-  },
-});
-const outputs = [result].flat().flatMap(build => build.output);
-const chunks = outputs.filter(output => output.type === 'chunk');
-if (chunks.length !== 1) throw new Error('Expected one local client script.');
-await writeFile(new URL('../vendor/yapmod/mobile.json', import.meta.url), JSON.stringify(chunks[0].code) + '\n');
+
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) buildMobilePlugin();

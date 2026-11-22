@@ -7,10 +7,12 @@
     "start": "expo start --go",
     "android": "expo start --go --android",
     "ios": "expo start --go --ios",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p plugin/tsconfig.json",
     "test": "tsx --test tests/*.test.ts",
     "check": "npm run typecheck && npm test && expo install --check && expo-doctor",
-    "postinstall": "node scripts/apply-webview.cjs"
+    "postinstall": "node scripts/apply-webview.cjs",
+    "build:plugin": "node scripts/bundle-mobile.mjs",
+    "sync:client": "node scripts/sync-client.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -27,8 +29,11 @@
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.6.6",
     "@types/react": "~19.3.0",
+    "@yapmod/builder": "1.3.0",
+    "@yapmod/types": "1.5.0",
     "expo-doctor": "^1.21.8",
     "jsdom": "^31.0.1",
+    "solid-js": "1.9.18",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   },
