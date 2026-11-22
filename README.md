@@ -3,6 +3,7 @@
   <h1>Yapmod Mobile</h1>
   <p>Open Yapin on iOS and Android with a bundled Yapmod plugin and settings built into the web client.</p>
   <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL%20v3-blue" alt="GNU GPL v3 license" /></a>
     <img src="https://img.shields.io/badge/Expo-SDK%2058-000020" alt="Expo SDK 58" />
     <img src="https://img.shields.io/badge/React%20Native-0.88-20232a" alt="React Native 0.88" />
   </p>
@@ -22,7 +23,7 @@ If you need to reach the settings before signing in or while the plugin is disab
 
 ## Microphone and camera permissions
 
-In Expo Go on iOS, the app declines web microphone and camera requests. On Android, Expo Go controls device permissions. Use a dedicated development build to test the project’s native capture prompts and origin checks. Voice and video calls, background audio, lock-screen behavior, and audio device switching still need testing on both platforms. [Device verification](VERIFICATION.md)
+In Expo Go on iOS, the app declines web microphone and camera requests. On Android, Expo Go controls device permissions. Use a dedicated development build to test the project’s native capture prompts and origin checks. Voice and video calls, background audio, lock-screen behavior, and audio device switching still need testing on both platforms.
 
 ## Development
 
@@ -57,7 +58,9 @@ node scripts/bundle-mobile.mjs /path/to/yapmod/client
 npm run check
 ```
 
-## Artwork and bundled licenses
+## License and artwork
+
+Yapmod Mobile is licensed under the GNU General Public License, version 3. [License](LICENSE)
 
 The project uses the Yapmod Desktop banner and app icon. Expo Go displays the project artwork inside its host app and keeps its own icon on the phone’s home screen. The bundled client and Solid code carry their upstream licenses. [Desktop artwork](https://github.com/yapmod/desktop#license-and-artwork) · [Yapmod client license](vendor/yapmod/LICENSE) · [Solid license](vendor/yapmod/LICENSE.solid-js)
 
