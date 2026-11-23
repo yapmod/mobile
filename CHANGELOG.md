@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-11-23
+
 ### Added
 
 - Install Yapmod Mobile from the signed Android APK or sideload the iPhone IPA with AltStore Classic. [Installation guide](https://github.com/yapmod/mobile/blob/v0.1.0/docs/install.md)
@@ -10,3 +12,4 @@
 - Receive Yapin alerts in your phone’s notification center while the Yapin page is running. Mobile notifications are on by default and require your phone’s permission. Tap an alert to return to the app, or turn alerts off for this phone in Mobile settings.
 - Open confirmed external HTTPS links in an in-app browser. Dismiss it to return to your conversation.
 - Use Yapin’s mobile headers and bottom tabs with spacing for the phone’s status bar and home indicator.
+
