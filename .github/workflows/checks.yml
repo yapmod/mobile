@@ -1,0 +1,30 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: node --test .github/scripts/*.test.mjs
+      - run: node .github/scripts/check-changelog.mjs
+        if: github.event_name != 'push'
+        env:
+          CHANGELOG_BASE: ${{ github.event.pull_request.base.sha || 'origin/main' }}

@@ -29,13 +29,18 @@ async function download(url, maxBytes) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-export async function syncClient({ allowCached = false, clientFile = defaultClientFile } = {}) {
+export async function syncClient({ allowCached = false, bundledOnly = false, clientFile = defaultClientFile } = {}) {
   let cached;
   try {
     const saved = JSON.parse(await readFile(clientFile, 'utf8'));
     if (verifiedClient(saved)) cached = saved;
   } catch (error) {
     if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
+  }
+
+  if (bundledOnly) {
+    if (!cached) throw new Error('The tagged Yapmod client failed SHA-256 verification.');
+    return cached.tag;
   }
 
   let next;

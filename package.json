@@ -33,6 +33,7 @@
     "@yapmod/types": "1.5.0",
     "expo-doctor": "^1.21.8",
     "jsdom": "^31.0.1",
+    "release-please": "17.11.2",
     "solid-js": "1.9.18",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"

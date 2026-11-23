@@ -1,0 +1,148 @@
+name: Release mobile
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Approved stable tag to build or retry (vX.Y.Z)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-publish
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ inputs.tag }}
+  YAPMOD_BUNDLED_CLIENT: '1'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      draft: ${{ steps.state.outputs.draft }}
+    steps:
+      - run: '[[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]'
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git merge-base --is-ancestor HEAD origin/main
+          test "v$(jq -r .version package.json)" = "$RELEASE_TAG"
+          test "v$(jq -r '.["."]' .release-please-manifest.json)" = "$RELEASE_TAG"
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease > "$RUNNER_TEMP/state.json"
+          jq -e '.isPrerelease == false' "$RUNNER_TEMP/state.json"
+          echo "draft=$(jq -r .isDraft "$RUNNER_TEMP/state.json")" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: verify
+    if: needs.verify.outputs.draft == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: android
+            runner: ubuntu-24.04
+          - platform: ios
+            runner: macos-26
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck && npm test
+      - run: npx expo prebuild --platform "${{ matrix.platform }}" --no-install
+      - uses: actions/setup-java@v5
+        if: matrix.platform == 'android'
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Assemble universal Android release
+        if: matrix.platform == 'android'
+        env:
+          NODE_ENV: production
+        run: |
+          cd android
+          ./gradlew :app:assembleRelease
+      - name: Sign and verify APK
+        if: matrix.platform == 'android'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: bash .github/scripts/sign-android.sh
+      - name: Archive for iPhone and package IPA for re-signing
+        if: matrix.platform == 'ios'
+        env:
+          NODE_ENV: production
+        run: |
+          (cd ios && pod install)
+          bash .github/scripts/package-ios.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mobile-${{ matrix.platform }}
+          path: deliverables/
+          if-no-files-found: error
+          overwrite: true
+          compression-level: 0
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: mobile-*
+          path: deliverables
+          merge-multiple: true
+      - id: publish
+        working-directory: deliverables
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          draft=$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)
+          if [[ "$draft" != true ]]; then exit 0; fi
+          apk="Yapmod-Mobile-$RELEASE_TAG.apk"
+          ipa="Yapmod-Mobile-$RELEASE_TAG.ipa"
+          sha256sum "$apk" "$ipa" > SHA256SUMS.txt
+          gh release upload "$RELEASE_TAG" "$apk" "$ipa" SHA256SUMS.txt --clobber
+          gh release edit "$RELEASE_TAG" --draft=false
+          echo 'published=true' >> "$GITHUB_OUTPUT"
+
+  announce:
+    needs: publish
+    if: needs.publish.outputs.published == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/announce-release.yml
+    with:
+      tag: ${{ inputs.tag }}
+    secrets:
+      YAPIN_RELEASE_WEBHOOK_URL: ${{ secrets.YAPIN_RELEASE_WEBHOOK_URL }}

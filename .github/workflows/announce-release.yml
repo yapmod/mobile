@@ -1,0 +1,56 @@
+name: Announce release on Yapin
+
+on:
+  release:
+    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+    secrets:
+      YAPIN_RELEASE_WEBHOOK_URL:
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Published release tag to announce (resends the message)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: announce-release-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  announce:
+    if: startsWith(inputs.tag || github.event.release.tag_name, 'v') && !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm ci --prefix .github/announcement
+      - name: Read published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$(node -p 'encodeURIComponent(process.env.RELEASE_TAG)')" > "$RUNNER_TEMP/yapmod-release.json"
+      - name: Generate and host release banner
+        if: github.event.repository.private == false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/announcement/publish-banner.mjs "$RUNNER_TEMP/yapmod-release.json" "$RUNNER_TEMP/release-banner.png"
+      - name: Send embed announcement
+        env:
+          YAPIN_RELEASE_WEBHOOK_URL: ${{ secrets.YAPIN_RELEASE_WEBHOOK_URL }}
+          YAPIN_RELEASE_NONCE: release-${{ github.run_id }}
+          YAPIN_RELEASE_ROLE_ID: ${{ vars.YAPIN_RELEASE_ROLE_ID }}
+        run: node .github/scripts/announce-release.mjs "$RUNNER_TEMP/yapmod-release.json"

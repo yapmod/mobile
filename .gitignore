@@ -11,3 +11,5 @@ dist/
 *.p12
 *.mobileprovision
 *.keystore
+
+/deliverables/
