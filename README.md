@@ -6,6 +6,7 @@
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL%20v3-blue" alt="GNU GPL v3 license" /></a>
     <img src="https://img.shields.io/badge/Expo-SDK%2058-000020" alt="Expo SDK 58" />
     <img src="https://img.shields.io/badge/React%20Native-0.88-20232a" alt="React Native 0.88" />
+    <a href="https://github.com/yapmod/mobile/releases"><img src="https://img.shields.io/github/downloads/yapmod/mobile/total" alt="Total release asset downloads" /></a>
   </p>
 </div>
 
