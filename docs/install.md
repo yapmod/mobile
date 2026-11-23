@@ -1,6 +1,6 @@
 # Install Yapmod Mobile on your phone
 
-Open the release on your phone, expand **Assets**, and download the file for your platform. Android uses the **.apk**. iPhone uses the **.ipa** plus a signing tool. Both contain the app and the Yapmod client. You can close your computer after installation and use the app with an internet connection to Yapin. While the GitHub repository is private, downloads require an account with repository access or a copy of the file from the maintainer. [Yapmod Mobile releases](https://github.com/yapmod/mobile/releases)
+Open the release on your phone, expand **Assets**, and download the file for your platform. Android uses the **.apk**. iPhone uses the **.ipa** plus a signing tool. Both contain the app and the Yapmod client. You can close your computer after installation and use the app with an internet connection to Yapin. [Yapmod Mobile releases](https://github.com/yapmod/mobile/releases)
 
 ## Android
 
