@@ -28,6 +28,9 @@ test('release refresh verifies new bytes and preserves the last verified client 
   await syncClient({ clientFile });
   assert.equal(release.mock.callCount(), 3); // Second check only fetched release metadata.
 
+  assert.equal(await syncClient({ clientFile, bundledOnly: true }), 'v1');
+  assert.equal(release.mock.callCount(), 3); // Tagged builds never consult the latest release.
+
   publishedDigest = 'sha256:' + '0'.repeat(64);
   assetBody = 'unexpected response';
   await assert.rejects(syncClient({ clientFile }), /SHA-256/);
@@ -36,5 +39,6 @@ test('release refresh verifies new bytes and preserves the last verified client 
   release.mock.mockImplementation(async () => new Response(null, { status: 503 }));
   assert.equal(await syncClient({ clientFile, allowCached: true }), 'v1');
   await writeFile(clientFile, JSON.stringify({ tag: 'v1', digest, source: 'damaged' }));
+  await assert.rejects(syncClient({ clientFile, bundledOnly: true }), /SHA-256/);
   await assert.rejects(syncClient({ clientFile, allowCached: true }), /HTTP 503/);
 });

@@ -9,9 +9,13 @@
   </p>
 </div>
 
+## Install
+
+Download the APK for Android or the IPA for iPhone from GitHub Releases. The iPhone guide walks through signing the IPA with AltStore Classic and refreshing it with a free Apple Account. [Downloads](https://github.com/yapmod/mobile/releases) · [Installation guide](docs/install.md) · [Maintainer release workflow](docs/release.md)
+
 ## Signing in
 
-Open Yapmod Mobile in Expo Go and sign in through Yapin. The app opens the same sign-in address as Yapmod Desktop. Email and password sign-in has been confirmed on an iPhone 13 Pro Max running Expo Go 58.0.5, including Yapin’s bot check. Google sign-in, passkeys, and sign-in on Android still need device testing. [Yapin](https://www.yapin.gg/?auth=in)
+Open Yapmod Mobile and sign in through Yapin. The app opens the same sign-in address as Yapmod Desktop. Email and password sign-in has been confirmed on an iPhone 13 Pro Max running Expo Go 58.0.5, including Yapin’s bot check. Google sign-in, passkeys, and sign-in on Android still need device testing. [Yapin](https://www.yapin.gg/?auth=in)
 
 Yapin manages the session in the WebView’s persistent storage. Reloading Yapin or turning modifications off preserves that storage. Whether a signed-in session survives a full app restart still needs verification.
 
