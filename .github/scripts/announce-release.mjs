@@ -37,12 +37,12 @@ export function releaseMessage(release, roleId, bannerUrl) {
     throw new Error('Only stable mobile releases can be announced');
   }
   const title = `Yapmod Mobile ${tag}`;
-  const guide = new URL(`../../blob/${tag}/docs/install.md`, new URL('./', url));
+  const notesUrl = `https://yapmod.vercel.app/releases/mobile/${encodeURIComponent(tag)}`;
   const overflow = '\n\n*See full release notes for more.*';
   const notes =
     formatChangelog(release.body)
       .replace(/^#{1,6} .+\n*/gm, '')
-      .trim() || 'Read the release notes on GitHub.';
+      .trim() || 'Open the release notes for details.';
   const budget = 650;
   let changelog = notes;
   if (notes.length > budget) {
@@ -61,7 +61,7 @@ export function releaseMessage(release, roleId, bannerUrl) {
     if (fence !== -1) lines.splice(fence);
     changelog = lines.join('\n').trimEnd() + overflow;
   }
-  const embed = { title, url: url.href, description: changelog, color: 0xdd5a8c };
+  const embed = { title, url: notesUrl, description: changelog, color: 0xdd5a8c };
   if (bannerUrl) {
     const image = new URL(bannerUrl);
     if (image.protocol !== 'https:') throw new Error('Expected an HTTPS banner URL');
@@ -75,8 +75,8 @@ export function releaseMessage(release, roleId, bannerUrl) {
       {
         type: 1,
         components: [
-          { type: 2, style: 5, label: 'Downloads & release notes', url: url.href },
-          { type: 2, style: 5, label: 'Installation guide', url: guide.href },
+          { type: 2, style: 5, label: 'Download', url: 'https://yapmod.vercel.app/mobile' },
+          { type: 2, style: 5, label: 'Release notes', url: notesUrl },
         ],
       },
     ],
