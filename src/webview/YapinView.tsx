@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { isRunningInExpoGo } from 'expo';
+import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser';
 import { randomUUID } from 'expo-crypto';
-import { ActivityIndicator, Alert, AppState, BackHandler, Linking, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, BackHandler, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { tag as clientTag } from '../../vendor/yapmod/client.json';
 import { readMessage } from '../bridge/messages';
@@ -10,6 +10,7 @@ import { listenForTap, notificationSession } from '../notifications/native';
 import { Action, colors, styles } from '../components/controls';
 import { isInternal, webAddress } from '../config/address';
 import { allowChildFrame } from './frameNavigation';
+import { linkPreviewScript, readPreview } from '../injection/linkPreview';
 import { bootstrapScript } from '../injection/bootstrap';
 
 type Props = {
@@ -25,6 +26,7 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
   const back = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const openingBrowser = useRef(false);
   const confirmed = useRef(false);
   const [channel] = useState(randomUUID);
   const source = useMemo(() => ({ uri: address.href }), [address.href]);
@@ -66,13 +68,11 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
 
   function external(raw: string) {
     const target = webAddress(raw);
-    if (!target) return;
-    Alert.alert('Ouvrir le navigateur ?', target.host, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Ouvrir', onPress: () => {
-        Linking.openURL(target.href).catch(() => Alert.alert('Impossible d’ouvrir le navigateur.'));
-      } },
-    ]);
+    if (!target || openingBrowser.current) return;
+    openingBrowser.current = true;
+    void openBrowserAsync(target.href, { presentationStyle: WebBrowserPresentationStyle.PAGE_SHEET })
+      .catch(() => Alert.alert('Impossible d’ouvrir le navigateur.'))
+      .finally(() => { openingBrowser.current = false; });
   }
   function failed() {
     resetNotices();
@@ -88,7 +88,7 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
       originWhitelist={['*']} mixedContentMode="never" allowFileAccess={false}
       allowFileAccessFromFileURLs={false} allowUniversalAccessFromFileURLs={false}
       domStorageEnabled incognito={false} thirdPartyCookiesEnabled={false}
-      mediaCapturePermissionGrantType={isRunningInExpoGo() ? 'deny' : 'prompt'}
+      mediaCapturePermissionGrantType="deny"
       allowsInlineMediaPlayback mediaPlaybackRequiresUserAction
       geolocationEnabled={false} setSupportMultipleWindows
       onShouldStartLoadWithRequest={req => {
@@ -116,8 +116,11 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
       onHttpError={({ nativeEvent }) => {
         if (isInternal(nativeEvent.url, address.origin) && nativeEvent.statusCode >= 400) failed();
       }}
-      injectedJavaScript={enabled ? script : undefined}
-      onMessage={enabled ? ({ nativeEvent }) => {
+      injectedJavaScript={linkPreviewScript(address.origin, channel) + (enabled ? script : '')}
+      onMessage={({ nativeEvent }) => {
+        const preview = readPreview(nativeEvent.url, nativeEvent.data, address.origin, channel);
+        if (preview) { external(preview.href); return; }
+        if (!enabled) return;
         const message = readMessage(nativeEvent.url, nativeEvent.data, address.origin, channel);
         if (!message) {
           const session = notices.current;
@@ -132,7 +135,7 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
         if (message.type === 'settings') { onSettings(); return; }
         confirmed.current = message.type !== 'ready';
         onStatus(states[message.type]);
-      } : undefined}
+      }}
     />
     {loading && <ActivityIndicator color={colors.accent} accessibilityLabel="Chargement de Yapin"
       style={{ position: 'absolute', alignSelf: 'center', top: '48%' }} />}

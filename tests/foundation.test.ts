@@ -7,6 +7,7 @@ import { isInternal, webAddress } from '../src/config/address';
 import { readMessage } from '../src/bridge/messages';
 import { readNotice, type NoticeRequest } from '../src/bridge/notifications';
 import { allowChildFrame } from '../src/webview/frameNavigation';
+import { linkPreviewScript, readPreview } from '../src/injection/linkPreview';
 import { bootstrapScript } from '../src/injection/bootstrap';
 
 const origin = 'https://www.yapin.gg';
@@ -169,5 +170,35 @@ test('live notification forwards show, tap and close once and restores the previ
     assert.equal(requests.at(-1)?.op, 'close');
     inject(false);
     assert.equal(dom.window.Notification, original);
+  } finally { dom.window.close(); }
+});
+
+test('only the confirmed external popup goes to the native preview', () => {
+  const { dom } = page();
+  try {
+    const w = dom.window;
+    const previews: string[] = [];
+    const popups: unknown[] = [];
+    w.ReactNativeWebView = { postMessage(data: string) {
+      const url = readPreview(origin, data, origin, channel);
+      if (url) previews.push(url.href);
+      assert.equal(readPreview('https://elsewhere.test', data, origin, channel), null);
+      assert.equal(readPreview(origin, data, origin, 'other'), null);
+    } };
+    w.open = (...args) => { popups.push(args); return null; };
+    w.eval(linkPreviewScript(origin, channel));
+    w.eval(linkPreviewScript(origin, channel));
+    const link = w.document.createElement('a');
+    link.href = 'https://example.org/article';
+    const visit = w.document.createElement('button');
+    link.onclick = event => { event.preventDefault(); w.document.body.append(visit); };
+    visit.onclick = () => w.open(link.href, '_blank', 'noopener,noreferrer');
+    link.click();
+    assert.deepEqual(previews, []);
+    visit.click();
+    assert.deepEqual(previews, [link.href]);
+    w.open('/invite/server', '_blank', 'noopener,noreferrer');
+    assert.deepEqual(popups, [['/invite/server', '_blank', 'noopener,noreferrer']]);
+    assert.equal(w.location.href, origin + '/');
   } finally { dom.window.close(); }
 });

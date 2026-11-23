@@ -10,7 +10,6 @@
     "typecheck": "tsc --noEmit && tsc -p plugin/tsconfig.json",
     "test": "tsx --test tests/*.test.ts",
     "check": "npm run typecheck && npm test && expo install --check && expo-doctor",
-    "postinstall": "node scripts/apply-webview.cjs",
     "build:plugin": "node scripts/bundle-mobile.mjs",
     "sync:client": "node scripts/sync-client.mjs"
   },
@@ -19,8 +18,8 @@
     "expo": "~58.0.26",
     "expo-constants": "~58.0.16",
     "expo-crypto": "~58.0.8",
-    "expo-dev-client": "~58.0.21",
     "expo-notifications": "~58.1.9",
+    "expo-web-browser": "~58.1.0",
     "react": "19.3.0",
     "react-native": "0.88.1",
     "react-native-safe-area-context": "~5.11.1",
