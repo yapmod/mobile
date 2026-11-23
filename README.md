@@ -29,7 +29,7 @@ Choose which alerts you want in Yapin. **Settings → Yapmod → Mobile → Mobi
 
 ## Microphone and camera permissions
 
-In Expo Go on iOS, the app declines web microphone and camera requests. On Android, Expo Go controls device permissions. Use a dedicated development build to test the project’s native capture prompts and origin checks. Voice and video calls, background audio, lock-screen behavior, and audio device switching still need testing on both platforms.
+In Expo Go on iOS, the app declines web microphone and camera requests. On Android, Expo Go controls device permissions. Voice and video calls, background audio, lock-screen behavior, and audio device switching still need testing on both platforms.
 
 ## Development
 
@@ -51,9 +51,6 @@ Scan the QR code printed by Metro to open the project on your phone. The default
 | `npm run build:plugin` | Compiles the mobile plugin with `@yapmod/builder`. |
 | `npm run check` | Runs strict TypeScript checks, the tests, Expo dependency validation, and Expo Doctor. |
 | `npx expo export --platform all` | Produces JavaScript bundles for iOS and Android. |
-| `npx expo run:ios --device` / `npx expo run:android` | Compiles and installs a dedicated development build using the platform’s native toolchain. |
-
-The dedicated build uses the versioned WebView patch in `patches/`. Expo Go uses its own WebView binary. The development bundle identifier and Android package name are both `dev.yapmod.mobile`. Change them in `app.config.js` before preparing a public release.
 
 ## Local plugin development
 
