@@ -31,19 +31,19 @@ export default function App() {
     restart(n => n + 1);
     savePreference(value).catch(() => Alert.alert('Impossible d’enregistrer la préférence.'));
   }
-  return <SafeAreaProvider><SafeAreaView style={styles.screen}
+  return <SafeAreaProvider><View style={styles.screen}
     onTouchStartCapture={event => {
       if (event.nativeEvent.touches.length >= 3) open(true);
     }} onAccessibilityEscape={() => open(true)}>
     <StatusBar barStyle="light-content" />
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      {!address ? <View style={styles.center}><Text style={styles.title}>Adresse de Yapin à configurer</Text>
-        <Text style={styles.detail}>Renseignez EXPO_PUBLIC_YAPIN_URL puis régénérez le build.</Text></View>
-        : enabled === null ? <ActivityIndicator color={colors.accent} />
+      {!address ? <SafeAreaView style={styles.center}><Text style={styles.title}>Adresse de Yapin à configurer</Text>
+        <Text style={styles.detail}>Renseignez EXPO_PUBLIC_YAPIN_URL puis régénérez le build.</Text></SafeAreaView>
+        : enabled === null ? <SafeAreaView style={styles.center}><ActivityIndicator color={colors.accent} /></SafeAreaView>
         : <YapinView key={page} address={address} enabled={enabled} covered={settings} onSettings={() => open(true)} onStatus={setStatus} />}
     </KeyboardAvoidingView>
     <Settings open={settings} enabled={enabled} status={address ? status : 'Adresse non configurée'}
       canReload={Boolean(address) && enabled !== null} onToggle={change}
       onClose={() => open(false)} onReload={() => { restart(n => n + 1); open(false); }} />
-  </SafeAreaView></SafeAreaProvider>;
+  </View></SafeAreaProvider>;
 }
