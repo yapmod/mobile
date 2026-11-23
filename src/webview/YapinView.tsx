@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser';
 import { randomUUID } from 'expo-crypto';
 import { ActivityIndicator, Alert, AppState, BackHandler, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { tag as clientTag } from '../../vendor/yapmod/client.json';
 import { readMessage } from '../bridge/messages';
@@ -11,6 +12,7 @@ import { Action, colors, styles } from '../components/controls';
 import { isInternal, webAddress } from '../config/address';
 import { allowChildFrame } from './frameNavigation';
 import { linkPreviewScript, readPreview } from '../injection/linkPreview';
+import { layoutScript } from '../injection/layout';
 import { bootstrapScript } from '../injection/bootstrap';
 
 type Props = {
@@ -80,11 +82,13 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
     setLoading(false);
     onStatus('Page indisponible');
   }
-  if (error) return <View style={styles.center}><Text style={styles.title}>Yapin est indisponible</Text>
+  if (error) return <SafeAreaView style={styles.center}><Text style={styles.title}>Yapin est indisponible</Text>
     <Text style={styles.detail}>Vérifiez votre connexion puis réessayez.</Text>
-    <Action title="Réessayer" onPress={() => { setError(false); setLoading(true); }} /></View>;
+    <Action title="Réessayer" onPress={() => { setError(false); setLoading(true); }} /></SafeAreaView>;
   return <View style={styles.screen}>
     <WebView<object> ref={ref} source={source} style={styles.screen}
+      // Yapin uses viewport-fit=cover and CSS safe-area insets for its controls.
+      automaticallyAdjustContentInsets={false} contentInsetAdjustmentBehavior="never"
       originWhitelist={['*']} mixedContentMode="never" allowFileAccess={false}
       allowFileAccessFromFileURLs={false} allowUniversalAccessFromFileURLs={false}
       domStorageEnabled incognito={false} thirdPartyCookiesEnabled={false}
@@ -116,7 +120,7 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
       onHttpError={({ nativeEvent }) => {
         if (isInternal(nativeEvent.url, address.origin) && nativeEvent.statusCode >= 400) failed();
       }}
-      injectedJavaScript={linkPreviewScript(address.origin, channel) + (enabled ? script : '')}
+      injectedJavaScript={layoutScript(address.origin) + linkPreviewScript(address.origin, channel) + (enabled ? script : '')}
       onMessage={({ nativeEvent }) => {
         const preview = readPreview(nativeEvent.url, nativeEvent.data, address.origin, channel);
         if (preview) { external(preview.href); return; }
