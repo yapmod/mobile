@@ -19,7 +19,7 @@ gh secret set ANDROID_KEY_PASSWORD --repo yapmod/mobile
 
 Enter the PKCS12 password at both password prompts for GitHub. The iPhone build uses the device SDK and packages the Release app under `Payload/` for the recipient to sign. CI requires no Apple account, certificate, or provisioning profile.
 
-Set the Actions secret `YAPIN_RELEASE_WEBHOOK_URL` and the variable `YAPIN_RELEASE_ROLE_ID` to the webhook and role used for release announcements. The embed links to the tagged installation guide and the GitHub release. For public repositories the workflow generates the desktop-style mobile PNG in `.github/announcement`, commits it to the dedicated `release-banners` branch, and embeds its commit-pinned URL. For private repositories it omits the image because Yapin cannot fetch authenticated raw GitHub files.
+Set the Actions secret `YAPIN_RELEASE_WEBHOOK_URL` and the variable `YAPIN_RELEASE_ROLE_ID` to the webhook and role used for release announcements. The embed links to the announced version’s release notes on the Yapmod website. Its Download button opens the mobile installation page for Android and iPhone. For public repositories the workflow generates the desktop-style mobile PNG in `.github/announcement`, commits it to the dedicated `release-banners` branch, and embeds its commit-pinned URL. For private repositories it omits the image because Yapin cannot fetch authenticated raw GitHub files.
 
 ## Prepare a release
 

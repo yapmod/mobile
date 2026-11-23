@@ -19,8 +19,10 @@ test('compact branded embed has content, two link buttons, and a remote banner',
   assert.equal(p.embeds.length, 1);
   assert.equal(p.embeds[0].description, '- A useful update.');
   assert.ok(p.embeds[0].image.url.startsWith('https://raw.githubusercontent.com/'));
-  assert.deepEqual(p.components[0].components.map(button => button.url), [
-    release.html_url, 'https://github.com/example/app/blob/v1.5.0/docs/install.md',
+  assert.equal(p.embeds[0].url, 'https://yapmod.vercel.app/releases/mobile/v1.5.0');
+  assert.deepEqual(p.components[0].components.map(button => [button.label, button.url]), [
+    ['Download', 'https://yapmod.vercel.app/mobile'],
+    ['Release notes', p.embeds[0].url],
   ]);
   assert.ok(
     p.components[0].components.every(
