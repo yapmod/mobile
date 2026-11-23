@@ -17,7 +17,9 @@ apk="deliverables/Yapmod-Mobile-$RELEASE_TAG.apk"
 "$tools/apksigner" verify --verbose --print-certs "$apk" > "$work/signature"
 cert=$(keytool -exportcert -keystore "$work/release.keystore" -alias "$ANDROID_KEY_ALIAS" \
   -storepass:env ANDROID_STORE_PASSWORD | openssl dgst -sha256 -r | cut -d' ' -f1)
-grep -Fx "Signer #1 certificate SHA-256 digest: $cert" "$work/signature"
+# Build Tools can report a separate signer line for each signature scheme.
+signers=$(sed -n 's/^.*certificate SHA-256 digest: //p' "$work/signature" | sort -u)
+[[ "$signers" == "$cert" ]]
 "$tools/aapt" dump badging "$apk" > "$work/metadata"
 grep "^package: name='app.yapmod.mobile' .*versionName='${RELEASE_TAG#v}' " "$work/metadata"
 unzip -tq "$apk" assets/index.android.bundle
