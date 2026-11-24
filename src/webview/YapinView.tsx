@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { openBrowserAsync, WebBrowserPresentationStyle } from 'expo-web-browser';
 import { randomUUID } from 'expo-crypto';
 import { ActivityIndicator, Alert, AppState, BackHandler, Text, View } from 'react-native';
@@ -10,6 +10,7 @@ import { readNotice } from '../bridge/notifications';
 import { listenForTap, notificationSession } from '../notifications/native';
 import { Action, colors, styles } from '../components/controls';
 import { isInternal, webAddress } from '../config/address';
+import { initialRecovery, recover, type Failure } from './recovery';
 import { allowChildFrame } from './frameNavigation';
 import { linkPreviewScript, readPreview } from '../injection/linkPreview';
 import { layoutScript } from '../injection/layout';
@@ -23,11 +24,45 @@ const states = {
   inactive: 'Désactivé', error: 'Échec du diagnostic',
 };
 
-export function YapinView({ address, enabled, covered, onSettings, onStatus }: Props) {
+export function YapinView(props: Props) {
+  const [state, dispatch] = useReducer(recover, initialRecovery);
+  useEffect(() => {
+    if (!state.waitingForForeground) return;
+    function resume() { dispatch({ type: 'foreground', now: Date.now() }); }
+    const sub = AppState.addEventListener('change', status => { if (status === 'active') resume(); });
+    // The app may have resumed between the native failure and this subscription.
+    if (AppState.currentState === 'active') resume();
+    return () => sub.remove();
+  }, [state.waitingForForeground]);
+
+  const { onStatus } = props;
+  useEffect(() => {
+    if (state.failure) onStatus('Page indisponible');
+  }, [state.failure, onStatus]);
+
+  if (state.failure) {
+    const detail = state.failure.kind === 'renderer' ? 'L’affichage de Yapin s’est interrompu.'
+      : state.failure.kind === 'http' ? `Yapin a renvoyé une erreur HTTP ${state.failure.status}.`
+      : 'Le chargement a échoué. Vérifiez votre connexion puis réessayez.';
+    return <SafeAreaView style={styles.center}><Text style={styles.title}>Yapin est indisponible</Text>
+      <Text style={styles.detail}>{detail}</Text>
+      <Action title="Réessayer" onPress={() => dispatch({ type: 'retry' })} /></SafeAreaView>;
+  }
+  if (state.waitingForForeground) return <View style={styles.center}><ActivityIndicator color={colors.accent} /></View>;
+
+  return <YapinPage key={state.generation} {...props} onFailure={(failure, callback) => {
+    const appState = AppState.currentState;
+    console.warn('[Yapin WebView]', callback, appState, failure);
+    dispatch({ type: 'failed', generation: state.generation, failure, active: appState === 'active', now: Date.now() });
+  }} />;
+}
+
+function YapinPage({ address, enabled, covered, onSettings, onStatus, onFailure }: Props & {
+  onFailure: (failure: Failure, callback: string) => void;
+}) {
   const ref = useRef<WebView<object>>(null);
   const back = useRef(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const openingBrowser = useRef(false);
   const confirmed = useRef(false);
   const [channel] = useState(randomUUID);
@@ -53,20 +88,20 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
   useEffect(() => {
     if (covered) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!back.current || error) return false;
+      if (!back.current) return false;
       ref.current?.goBack();
       return true;
     });
     return () => sub.remove();
-  }, [covered, error]);
+  }, [covered]);
 
   useEffect(() => {
-    if (!enabled || loading || error) return;
+    if (!enabled || loading) return;
     const timer = setTimeout(() => {
       if (!confirmed.current) onStatus('Aucune réponse du bootstrap');
     }, 4000);
     return () => clearTimeout(timer);
-  }, [enabled, loading, error, onStatus]);
+  }, [enabled, loading, onStatus]);
 
   function external(raw: string) {
     const target = webAddress(raw);
@@ -76,15 +111,6 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
       .catch(() => Alert.alert('Impossible d’ouvrir le navigateur.'))
       .finally(() => { openingBrowser.current = false; });
   }
-  function failed() {
-    resetNotices();
-    setError(true);
-    setLoading(false);
-    onStatus('Page indisponible');
-  }
-  if (error) return <SafeAreaView style={styles.center}><Text style={styles.title}>Yapin est indisponible</Text>
-    <Text style={styles.detail}>Vérifiez votre connexion puis réessayez.</Text>
-    <Action title="Réessayer" onPress={() => { setError(false); setLoading(true); }} /></SafeAreaView>;
   return <View style={styles.screen}>
     <WebView<object> ref={ref} source={source} style={styles.screen}
       // Yapin uses viewport-fit=cover and CSS safe-area insets for its controls.
@@ -116,9 +142,13 @@ export function YapinView({ address, enabled, covered, onSettings, onStatus }: P
         onStatus(enabled ? 'En attente du bootstrap' : states.inactive);
       }}
       onLoad={() => setLoading(false)}
-      onError={failed} onContentProcessDidTerminate={failed} onRenderProcessGone={failed}
+      onError={({ nativeEvent }) => onFailure({ kind: 'load', code: nativeEvent.code }, 'onError')}
+      onContentProcessDidTerminate={() => onFailure({ kind: 'renderer' }, 'onContentProcessDidTerminate')}
+      onRenderProcessGone={() => onFailure({ kind: 'renderer' }, 'onRenderProcessGone')}
       onHttpError={({ nativeEvent }) => {
-        if (isInternal(nativeEvent.url, address.origin) && nativeEvent.statusCode >= 400) failed();
+        if (isInternal(nativeEvent.url, address.origin) && nativeEvent.statusCode >= 400) {
+          onFailure({ kind: 'http', status: nativeEvent.statusCode }, 'onHttpError');
+        }
       }}
       injectedJavaScript={layoutScript(address.origin) + linkPreviewScript(address.origin, channel) + (enabled ? script : '')}
       onMessage={({ nativeEvent }) => {
