@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Yapin now reopens automatically if iOS or Android stops the process displaying the page while the app is in the background. If the page is still running, returning to the app keeps your place.
+
 ## [0.1.0] — 2026-11-23
 
 ### Added
