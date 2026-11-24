@@ -4,7 +4,6 @@ import { randomUUID } from 'expo-crypto';
 import { ActivityIndicator, Alert, AppState, BackHandler, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import { tag as clientTag } from '../../vendor/yapmod/client.json';
 import { readMessage } from '../bridge/messages';
 import { readNotice } from '../bridge/notifications';
 import { listenForTap, notificationSession } from '../notifications/native';
@@ -17,11 +16,7 @@ import { layoutScript } from '../injection/layout';
 import { bootstrapScript } from '../injection/bootstrap';
 
 type Props = {
-  address: URL; enabled: boolean; covered: boolean; onSettings: () => void; onStatus: (text: string) => void;
-};
-const states = {
-  ready: 'Bootstrap v2 démarré', active: `Yapmod client ${clientTag} · Mobile plugin active`,
-  inactive: 'Désactivé', error: 'Échec du diagnostic',
+  address: URL; enabled: boolean;
 };
 
 export function YapinView(props: Props) {
@@ -34,11 +29,6 @@ export function YapinView(props: Props) {
     if (AppState.currentState === 'active') resume();
     return () => sub.remove();
   }, [state.waitingForForeground]);
-
-  const { onStatus } = props;
-  useEffect(() => {
-    if (state.failure) onStatus('Page indisponible');
-  }, [state.failure, onStatus]);
 
   if (state.failure) {
     const detail = state.failure.kind === 'renderer' ? 'L’affichage de Yapin s’est interrompu.'
@@ -57,14 +47,13 @@ export function YapinView(props: Props) {
   }} />;
 }
 
-function YapinPage({ address, enabled, covered, onSettings, onStatus, onFailure }: Props & {
+function YapinPage({ address, enabled, onFailure }: Props & {
   onFailure: (failure: Failure, callback: string) => void;
 }) {
   const ref = useRef<WebView<object>>(null);
   const back = useRef(false);
   const [loading, setLoading] = useState(true);
   const openingBrowser = useRef(false);
-  const confirmed = useRef(false);
   const [channel] = useState(randomUUID);
   const source = useMemo(() => ({ uri: address.href }), [address.href]);
   const notices = useRef<ReturnType<typeof notificationSession> | null>(null);
@@ -86,22 +75,13 @@ function YapinPage({ address, enabled, covered, onSettings, onStatus, onFailure 
   const script = useMemo(() => bootstrapScript(address.origin, enabled, channel), [address.origin, enabled, channel]);
 
   useEffect(() => {
-    if (covered) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (!back.current) return false;
       ref.current?.goBack();
       return true;
     });
     return () => sub.remove();
-  }, [covered]);
-
-  useEffect(() => {
-    if (!enabled || loading) return;
-    const timer = setTimeout(() => {
-      if (!confirmed.current) onStatus('Aucune réponse du bootstrap');
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [enabled, loading, onStatus]);
+  }, []);
 
   function external(raw: string) {
     const target = webAddress(raw);
@@ -137,9 +117,7 @@ function YapinPage({ address, enabled, covered, onSettings, onStatus, onFailure 
       onNavigationStateChange={state => { back.current = state.canGoBack; }}
       onLoadStart={() => {
         resetNotices();
-        confirmed.current = false;
         setLoading(true);
-        onStatus(enabled ? 'En attente du bootstrap' : states.inactive);
       }}
       onLoad={() => setLoading(false)}
       onError={({ nativeEvent }) => onFailure({ kind: 'load', code: nativeEvent.code }, 'onError')}
@@ -166,9 +144,6 @@ function YapinPage({ address, enabled, covered, onSettings, onStatus, onFailure 
         }
         if (message.type === 'active') notices.current ??= notificationSession();
         if (['inactive', 'error', 'ready'].includes(message.type)) resetNotices();
-        if (message.type === 'settings') { onSettings(); return; }
-        confirmed.current = message.type !== 'ready';
-        onStatus(states[message.type]);
       }}
     />
     {loading && <ActivityIndicator color={colors.accent} accessibilityLabel="Chargement de Yapin"

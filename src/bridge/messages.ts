@@ -3,7 +3,7 @@ import { isInternal } from '../config/address';
 export type BridgeMessage = {
   v: 2;
   channel: string;
-  type: 'ready' | 'active' | 'inactive' | 'error' | 'settings';
+  type: 'ready' | 'active' | 'inactive' | 'error';
 };
 
 export function readMessage(url: unknown, data: unknown, origin: string, channel: string): BridgeMessage | null {
@@ -16,7 +16,6 @@ export function readMessage(url: unknown, data: unknown, origin: string, channel
       case 'active':
       case 'inactive':
       case 'error':
-      case 'settings':
         return { v: 2, channel, type: message.type };
       default:
         return null;

@@ -44,7 +44,6 @@ export function bootstrapScript(origin: string, enabled: boolean, channel: strin
           return createPlugin(yapmod, {
             appVersion: ${JSON.stringify(version)},
             clientVersion: client.version,
-            openSettings: () => send('settings'),
             notice: request => window.ReactNativeWebView?.postMessage(JSON.stringify({
               v: 2, type: 'notice', channel: ${JSON.stringify(channel)}, request
             })),

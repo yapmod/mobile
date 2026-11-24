@@ -24,7 +24,7 @@ test('seule l’origine HTTPS configurée est interne', () => {
 const channel = '860b0ce6-970b-4436-907d-209fcea819be';
 
 test('la passerelle valide la provenance native, le canal et la forme exacte', () => {
-  for (const type of ['ready', 'active', 'inactive', 'error', 'settings']) {
+  for (const type of ['ready', 'active', 'inactive', 'error']) {
     const message = { v: 2, type, channel };
     const data = JSON.stringify(message);
     assert.deepEqual(readMessage(origin, data, origin, channel), message);
@@ -56,7 +56,7 @@ function page(url = origin) {
   } };
 }
 
-test('le plugin local monte une section, ouvre les paramètres et nettoie son intégration', async () => {
+test('le plugin local monte une section, gère les notifications et nettoie son intégration', async () => {
   const { dom, messages, requests, inject } = page();
   try {
     inject(true);
@@ -90,8 +90,10 @@ test('le plugin local monte une section, ouvre les paramètres et nettoie son in
     assert.equal(requests.at(-1)?.op, 'enable');
     await reply(true, 'denied');
     assert.ok(button('Open system settings'));
-    Array.from(panel.querySelectorAll('button')).find(button => button.textContent === 'Open settings')!.click();
-    assert.equal(messages.at(-1), 'settings');
+    assert.equal(button('Open settings'), undefined);
+    button('Open system settings')!.click();
+    assert.equal(requests.at(-1)?.op, 'settings');
+    await reply(true, 'denied');
     dom.window.history.pushState({}, '', '/some-route');
     inject(true);
     assert.equal(host.querySelectorAll(mobileNav).length, 1);
@@ -122,7 +124,7 @@ test('les cadres de connexion peuvent créer des documents inline sans accès au
   for (const url of ['about:blank', 'about:srcdoc', 'https://challenges.cloudflare.com/']) {
     assert.ok(allowChildFrame(url));
     assert.equal(isInternal(url, origin), false);
-    assert.equal(readMessage(url, JSON.stringify({ v: 2, type: 'settings', channel }), origin, channel), null);
+    assert.equal(readMessage(url, JSON.stringify({ v: 2, type: 'active', channel }), origin, channel), null);
   }
   for (const url of ['about:config', 'about:blank.example', 'file:///example', 'javascript:void(0)', 'http://example.org']) {
     assert.equal(allowChildFrame(url), false);
