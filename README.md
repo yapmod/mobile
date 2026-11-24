@@ -22,9 +22,9 @@ Yapin manages the session in the WebView’s persistent storage. Reloading Yapin
 
 ## Mobile settings
 
-Open **Settings → Yapmod → Mobile** in Yapin to see the app version and open the modification settings. From there you can check the plugin status, toggle modifications, or reload Yapin. Opening and closing settings keeps the current page. Changing the toggle reopens Yapin and saves your choice for the next launch.
+Open **Settings → Yapmod → Mobile** in Yapin to manage phone notifications and check the app and client versions.
 
-If you need to reach the settings before signing in or while the plugin is disabled, touch the view with three fingers. The main screen leaves the available space to Yapin.
+If Yapin stops responding or a modification causes trouble, touch the view with three fingers to open the system recovery dialog. You can reload Yapin or restart it with local modifications turned on or off. The app remembers your choice. The same gesture works before sign-in and with modifications disabled. On iOS, VoiceOver users can also use the escape gesture.
 
 ### Live notifications
 
@@ -61,7 +61,7 @@ Scan the QR code printed by Metro to open the project on your phone. The default
 
 Metro checks the latest stable release of the official Yapmod client when it starts or exports a bundle. It verifies GitHub’s SHA-256 digest for the `yapmod-client.js` asset and keeps a copy in `vendor/yapmod/client.json`. If the release check fails, Metro reports the fallback and uses the previously verified copy. Restart Metro to pick up a new release. An exported app uses the client bundled with that export. [Official client releases](https://github.com/yapmod/client/releases)
 
-On each authorized top-level Yapin document, the bootstrap starts the full client and calls its public `registerClientPlugin` API. The mobile plugin appears under **Settings → Yapmod → Mobile**, alongside the client’s own settings. Its page shows both the mobile app version and the running client version and opens the native modification controls.
+On each authorized top-level Yapin document, the bootstrap starts the full client and calls its public `registerClientPlugin` API. The mobile plugin appears under **Settings → Yapmod → Mobile**, alongside the client’s own settings. Its page shows both the mobile app version and the running client version.
 
 Edit `plugin/src/index.tsx` to add a mobile feature. Register settings in `onLoad` with `api.settings.registerSection` and use `@yapmod/ui` components from the shared client runtime. Keep the ID `client:yapmod-mobile` stable so client plugin preferences survive updates. Metro builds the plugin on startup and export. During an existing development session, run the following after editing its source, then reload Yapin to load the updated plugin.
 

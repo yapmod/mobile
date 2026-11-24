@@ -6,7 +6,6 @@ import type { NoticeRequest } from '../../src/bridge/notifications';
 interface MobileHost {
   appVersion: string;
   clientVersion: string;
-  openSettings(): void;
   notice(request: NoticeRequest): void;
   setActive(active: boolean): void;
 }
@@ -48,9 +47,6 @@ export default function mobilePlugin(api: typeof yapmod, host: MobileHost) {
             <Section label="Software">
               <SettingText label="App version" value={host.appVersion} />
               <SettingText label="Yapmod client version" value={host.clientVersion} />
-              <SettingRow label="Mobile modifications">
-                <Button size="small" onClick={() => host.openSettings()}>Open settings</Button>
-              </SettingRow>
             </Section>
           </SettingsPage>
         ),
