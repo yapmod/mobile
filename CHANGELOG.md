@@ -6,6 +6,10 @@
 
 - Touch Yapin with three fingers to open the system recovery dialog and reload the app or restart with modifications turned on or off. Notification controls and version details stay in Yapin’s Mobile settings.
 
+### Fixed
+
+- If iOS or Android stops the Yapin page while the app is in the background, Yapin automatically reloads when you return. If the page is still running, you keep your place.
+
 ## [0.1.0] — 2026-11-23
 
 ### Added
