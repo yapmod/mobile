@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Touch Yapin with three fingers to open the system recovery dialog and reload the app or restart with modifications turned on or off. Notification controls and version details stay in Yapin’s Mobile settings.
+
 ## [0.1.0] — 2026-11-23
 
 ### Added
