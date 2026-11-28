@@ -24,6 +24,8 @@ Yapin manages the session in the WebView’s persistent storage. Reloading Yapin
 
 Open **Settings → Yapmod → Mobile** in Yapin to manage phone notifications and check the app and client versions.
 
+When you open the app or use **Reload** in the recovery dialog, Yapmod Mobile checks GitHub for the latest stable client if modifications are enabled. It verifies the download against GitHub’s SHA-256 digest and uses the verified cached or bundled client if GitHub is unreachable.
+
 If Yapin stops responding or a modification causes trouble, touch the view with three fingers to open the system recovery dialog. You can reload Yapin or restart it with local modifications turned on or off. The app remembers your choice. The same gesture works before sign-in and with modifications disabled. On iOS, VoiceOver users can also use the escape gesture.
 
 ### Live notifications
@@ -59,7 +61,7 @@ Scan the QR code printed by Metro to open the project on your phone. The default
 
 ## Local plugin development
 
-Metro checks the latest stable release of the official Yapmod client when it starts or exports a bundle. It verifies GitHub’s SHA-256 digest for the `yapmod-client.js` asset and keeps a copy in `vendor/yapmod/client.json`. If the release check fails, Metro reports the fallback and uses the previously verified copy. Restart Metro to pick up a new release. An exported app uses the client bundled with that export. [Official client releases](https://github.com/yapmod/client/releases)
+Metro checks the latest stable release of the official Yapmod client when it starts or exports a bundle. It verifies GitHub’s SHA-256 digest for the `yapmod-client.js` asset and keeps a copy in `vendor/yapmod/client.json`. If the release check fails, Metro reports the fallback and uses the previously verified copy. Exported and tagged builds ship with a bundled fallback for the app’s runtime update check. [Official client releases](https://github.com/yapmod/client/releases)
 
 On each authorized top-level Yapin document, the bootstrap starts the full client and calls its public `registerClientPlugin` API. The mobile plugin appears under **Settings → Yapmod → Mobile**, alongside the client’s own settings. Its page shows both the mobile app version and the running client version.
 

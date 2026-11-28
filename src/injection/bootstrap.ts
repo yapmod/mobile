@@ -1,12 +1,11 @@
-import release from '../../vendor/yapmod/client.json';
 import mobilePlugin from '../../vendor/yapmod/mobile.json';
 import manifest from '../../plugin/manifest.json';
 import { version } from '../../package.json';
+import { bundledClient, type ClientRelease } from '../client/release';
 
-// Verify the entire release during preparation; omit only the relative devtools map at injection.
-const clientScript = release.source.replace(/\n\/\/# sourceMappingURL=yapmod-client\.js\.map\s*$/, '');
-
-export function bootstrapScript(origin: string, enabled: boolean, channel: string): string {
+export function bootstrapScript(origin: string, enabled: boolean, channel: string, release: ClientRelease = bundledClient): string {
+  // Strip the relative devtools map after the full release has been verified.
+  const clientScript = release.source.replace(/\n\/\/# sourceMappingURL=yapmod-client\.js\.map\s*$/, '');
   return `(function () {
     if (window !== window.top || location.origin !== ${JSON.stringify(origin)}) return;
     const key = '__yapmodMobileV3';

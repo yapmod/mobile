@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Yapmod Mobile checks for the latest stable Yapmod client when starting or reloading Yapin with modifications enabled. It verifies the download and keeps a local copy for when GitHub is unavailable.
 - If iOS or Android stops the Yapin page while the app is in the background, Yapin automatically reloads when you return. If the page is still running, you keep your place.
 
 ## [0.1.0] — 2026-11-23
