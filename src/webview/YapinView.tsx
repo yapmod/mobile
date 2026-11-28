@@ -14,13 +14,22 @@ import { allowChildFrame } from './frameNavigation';
 import { linkPreviewScript, readPreview } from '../injection/linkPreview';
 import { layoutScript } from '../injection/layout';
 import { bootstrapScript } from '../injection/bootstrap';
+import { loadClient } from '../client/native';
+import { bundledClient, type ClientRelease } from '../client/release';
 
 type Props = {
   address: URL; enabled: boolean;
 };
 
 export function YapinView(props: Props) {
+  const [client, setClient] = useState<ClientRelease | null>(null);
   const [state, dispatch] = useReducer(recover, initialRecovery);
+  useEffect(() => {
+    if (!props.enabled) return;
+    let live = true;
+    void loadClient().then(release => { if (live) setClient(release); });
+    return () => { live = false; };
+  }, [props.enabled]);
   useEffect(() => {
     if (!state.waitingForForeground) return;
     function resume() { dispatch({ type: 'foreground', now: Date.now() }); }
@@ -30,6 +39,9 @@ export function YapinView(props: Props) {
     return () => sub.remove();
   }, [state.waitingForForeground]);
 
+  if (props.enabled && !client) return <View style={styles.center}>
+    <ActivityIndicator color={colors.accent} accessibilityLabel="Vérification du client Yapmod" />
+  </View>;
   if (state.failure) {
     const detail = state.failure.kind === 'renderer' ? 'L’affichage de Yapin s’est interrompu.'
       : state.failure.kind === 'http' ? `Yapin a renvoyé une erreur HTTP ${state.failure.status}.`
@@ -40,14 +52,15 @@ export function YapinView(props: Props) {
   }
   if (state.waitingForForeground) return <View style={styles.center}><ActivityIndicator color={colors.accent} /></View>;
 
-  return <YapinPage key={state.generation} {...props} onFailure={(failure, callback) => {
+  return <YapinPage key={state.generation} {...props} client={client ?? bundledClient} onFailure={(failure, callback) => {
     const appState = AppState.currentState;
     console.warn('[Yapin WebView]', callback, appState, failure);
     dispatch({ type: 'failed', generation: state.generation, failure, active: appState === 'active', now: Date.now() });
   }} />;
 }
 
-function YapinPage({ address, enabled, onFailure }: Props & {
+function YapinPage({ address, enabled, client, onFailure }: Props & {
+  client: ClientRelease;
   onFailure: (failure: Failure, callback: string) => void;
 }) {
   const ref = useRef<WebView<object>>(null);
@@ -72,7 +85,8 @@ function YapinPage({ address, enabled, onFailure }: Props & {
     const focus = AppState.addEventListener('change', state => { if (state === 'active') emit({ refresh: true }); });
     return () => { resetNotices(); taps.remove(); focus.remove(); };
   }, [enabled, emit]);
-  const script = useMemo(() => bootstrapScript(address.origin, enabled, channel), [address.origin, enabled, channel]);
+  const script = useMemo(() => enabled ? bootstrapScript(address.origin, true, channel, client) : '',
+    [address.origin, enabled, channel, client]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -128,7 +142,7 @@ function YapinPage({ address, enabled, onFailure }: Props & {
           onFailure({ kind: 'http', status: nativeEvent.statusCode }, 'onHttpError');
         }
       }}
-      injectedJavaScript={layoutScript(address.origin) + linkPreviewScript(address.origin, channel) + (enabled ? script : '')}
+      injectedJavaScript={layoutScript(address.origin) + linkPreviewScript(address.origin, channel) + script}
       onMessage={({ nativeEvent }) => {
         const preview = readPreview(nativeEvent.url, nativeEvent.data, address.origin, channel);
         if (preview) { external(preview.href); return; }
